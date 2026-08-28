@@ -189,6 +189,13 @@ sending the same posting.
 Scheduled runs on GitHub are best effort and can be late by several minutes. That does
 not lose anything, because the next run still sees whatever has not been sent.
 
+GitHub turns off scheduled workflows in a public repository after 60 days with no
+activity, and commits made by the Actions bot do not count. Add a third secret,
+`STATE_TOKEN`, holding a fine grained personal access token with **Contents: read and
+write** on this repository, and the hourly history commit keeps the schedule alive on
+its own. Without it the workflow still runs correctly, it just needs a push to `main`
+every couple of months.
+
 ### cron
 
 ```cron

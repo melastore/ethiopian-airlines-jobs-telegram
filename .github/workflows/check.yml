@@ -58,7 +58,10 @@ jobs:
           cp data/jobs.db /tmp/state/jobs.db
           cd /tmp/state
           git init -q -b state
-          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          # A commit made with a personal token counts as repository activity, which
+          # is what stops GitHub disabling the schedule after 60 quiet days. Without
+          # STATE_TOKEN this still works, the schedule just needs waking by hand.
+          git remote add origin "https://x-access-token:${{ secrets.STATE_TOKEN || github.token }}@github.com/${{ github.repository }}.git"
           git config user.name "melastore"
           git config user.email "melastore@users.noreply.github.com"
           git add jobs.db
