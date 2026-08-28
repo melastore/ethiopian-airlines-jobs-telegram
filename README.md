@@ -1,8 +1,9 @@
 # Ethiopian Airlines Jobs Telegram Notifier
 
 Checks the Ethiopian Airlines careers website every hour and posts new local
-vacancies and recruitment results to a Telegram channel. Runs 1:00 to 12:00 on the
-Ethiopian clock, Monday to Saturday, and never posts the same item twice.
+vacancies and recruitment results to a Telegram channel, with the published candidate
+name list attached. Runs 1:00 to 12:00 on the Ethiopian clock, Monday to Saturday, and
+never posts the same item twice.
 
 Not affiliated with or endorsed by Ethiopian Airlines. Always confirm details on the
 official careers pages.
@@ -18,10 +19,46 @@ Registration Date: July 13, 2026, to July 17, 2026
 
 Location: Ethiopian Airlines Head Quarter, Ethiopian Airports Building (Recruitment & Placement Office)
 
-URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies
+Closing Date: July 17, 2026
+
+URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies#panel_0
 ```
 
-Results use the same shape with `Result` and `Announcement` labels.
+Results carry the announcement text and the size of the name list:
+
+```text
+-------- Result --------
+
+Position: Spa Therapist
+
+Announcement: CALL FOR COMPETENCY BASED INTERVIEW
+
+Location: Ethiopian Skylight Hotel
+
+Details: Among those candidates who submitted their application for the position of
+Spa Therapist, the following listed applicants are requested to come for Competency
+Based Interview (CBI) on Friday, August 28, 2026 ...
+
+Candidates listed: 11
+
+URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/results#panel_0
+```
+
+The `URL` points at the card itself rather than the top of the page. The site has no
+permanent page per job, so the anchor is the card's position on the page and it moves
+when the airline adds or removes a posting.
+
+## Name lists
+
+Every result card publishes the candidates who passed. The site does this in one of
+two ways, and both are delivered as a file alongside the message.
+
+* A linked PDF is downloaded and uploaded to Telegram as it is.
+* An inline table is written out as a UTF-8 CSV, so a list of ten thousand names stays
+  searchable instead of being cut off by Telegram's message limit.
+
+When the message is short enough it becomes the file's caption, so each posting is a
+single item in the channel.
 
 ## How duplicates are avoided
 
@@ -29,8 +66,8 @@ Every card gets two keys.
 
 * **Identity** is the kind, position and location, reduced to letters and digits.
   It answers "is this the same posting".
-* **Content key** adds the dates or announcement text and the rest of the card, also
-  reduced to letters and digits. It answers "has anything changed".
+* **Content key** adds the dates or announcement text, the rest of the card and any
+  attached file, also reduced to letters and digits. It answers "has anything changed".
 
 Because both keys ignore spacing, commas and capitalisation, an editor fixing
 `September 01 ,2026` into `September 01, 2026` does not cause a second post. A real

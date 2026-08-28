@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -19,14 +20,16 @@ def normalize(value: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", value).replace("\xa0", " ").split())
 
 
+_NOISE = re.compile(r"[^0-9a-z\u0080-\uffff]+")
+
+
 def squash(value: str) -> str:
     """Comparison form: letters and digits only.
 
     The careers site edits spacing, commas and capitalisation without changing
     the meaning, so those must never make an already sent post look new.
     """
-    folded = unicodedata.normalize("NFKC", value).casefold()
-    return "".join(character for character in folded if character.isalnum())
+    return _NOISE.sub("", unicodedata.normalize("NFKC", value).casefold())
 
 
 def _digest(*parts: str) -> str:
@@ -41,6 +44,9 @@ class JobPost:
     detail: str
     source_url: str
     source_key: str = ""
+    attachment_url: str = ""
+    extras: tuple[tuple[str, str], ...] = ()
+    candidate_rows: tuple[tuple[str, ...], ...] = ()
     # Both keys are derived once. Hashing the same card on every lookup is waste.
     identity: str = field(init=False, repr=False, compare=False, default="")
     content_key: str = field(init=False, repr=False, compare=False, default="")
@@ -54,7 +60,12 @@ class JobPost:
         object.__setattr__(
             self,
             "content_key",
-            _digest(identity, squash(self.detail), squash(self.source_key)),
+            _digest(
+                identity,
+                squash(self.detail),
+                squash(self.source_key),
+                squash(self.attachment_url),
+            ),
         )
 
     @property

@@ -35,3 +35,17 @@ def test_result_uses_announcement_label() -> None:
 
     assert "-------- Result --------" in message
     assert "<b>Announcement:</b> Call for interview" in message
+
+
+def test_name_list_link_is_added_when_a_file_is_attached() -> None:
+    post = JobPost(
+        kind=PostKind.RESULT,
+        position="Cabin Crew",
+        location="Head Office",
+        detail="Screening",
+        source_url="https://example.com/results",
+        attachment_url="https://example.com/docs/names.pdf",
+    )
+    message = format_telegram(post)
+    assert "Name list:" in message
+    assert 'href="https://example.com/docs/names.pdf"' in message

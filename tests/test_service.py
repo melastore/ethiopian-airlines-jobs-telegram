@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ethiopian_jobs.client import TelegramError, TelegramUncertain
 from ethiopian_jobs.models import JobPost, PostKind
-from ethiopian_jobs.service import deliver
+from ethiopian_jobs.service import deliver, name_list
 from ethiopian_jobs.storage import SentStore
 
 
@@ -19,9 +19,11 @@ def post(position: str) -> JobPost:
 class FakeTelegram:
     def __init__(self, failing_position: str | None = None) -> None:
         self.sent: list[JobPost] = []
+        self.documents: list[object] = []
         self.failing_position = failing_position
 
-    def send(self, item: JobPost) -> None:
+    def send(self, item: JobPost, document: object = None) -> None:
+        self.documents.append(document)
         if item.position == self.failing_position:
             raise TelegramError("test failure")
         self.sent.append(item)
@@ -43,7 +45,7 @@ class UncertainTelegram:
     def __init__(self) -> None:
         self.attempts = 0
 
-    def send(self, item: JobPost) -> None:
+    def send(self, item: JobPost, document: object = None) -> None:
         self.attempts += 1
         raise TelegramUncertain("connection dropped")
 
@@ -69,3 +71,21 @@ def test_failed_send_is_offered_again(tmp_path: Path) -> None:
     with SentStore(tmp_path / "jobs.db") as store:
         deliver([item], store, telegram)  # type: ignore[arg-type]
         assert store.unseen([item]) == [item]
+
+
+def test_inline_name_list_becomes_a_csv_attachment() -> None:
+    item = JobPost(
+        kind=PostKind.RESULT,
+        position="Spa Therapist",
+        location="Head Office",
+        detail="Interview",
+        source_url="https://example.com/results#panel_0",
+        candidate_rows=(("SER NO.", "FULL NAME"), ("1", "Abebe K."), ("2", "Sara T.")),
+    )
+    filename, content = name_list(item, None)
+    assert filename == "spa-therapist-name-list.csv"
+    assert b"Abebe K." in content
+
+
+def test_a_card_without_a_name_list_sends_no_file() -> None:
+    assert name_list(post("Driver I"), None) is None

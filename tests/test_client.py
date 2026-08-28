@@ -125,3 +125,23 @@ def test_sends_are_paced_apart() -> None:
         telegram.send(make_post())
 
     assert delays == [2.0]
+
+
+def test_document_is_uploaded_with_the_message_as_caption() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = request.content
+        return httpx.Response(200, json={"ok": True})
+
+    with TelegramClient(
+        "secret-token", "@jobs", transport=httpx.MockTransport(handler)
+    ) as telegram:
+        telegram.send(make_post(), ("names.pdf", b"%PDF-1.4 fake"))
+
+    assert str(seen["url"]).endswith("/sendDocument")
+    body = bytes(seen["body"])  # type: ignore[arg-type]
+    assert b"names.pdf" in body
+    assert b"%PDF-1.4 fake" in body
+    assert b"Driver I" in body

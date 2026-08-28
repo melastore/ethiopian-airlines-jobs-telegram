@@ -40,8 +40,8 @@ def _scrape(settings: Settings) -> list[JobPost]:
 
 
 def _run_once(settings: Settings) -> RunSummary:
-    with RunLock(settings.database_path):
-        posts = _scrape(settings)
+    with RunLock(settings.database_path), SourceClient(settings.request_timeout) as source:
+        posts = scrape(source)
         with (
             SentStore(settings.database_path) as store,
             TelegramClient(
@@ -51,7 +51,7 @@ def _run_once(settings: Settings) -> RunSummary:
                 settings.send_gap,
             ) as telegram,
         ):
-            summary = deliver(posts, store, telegram)
+            summary = deliver(posts, store, telegram, source)
     logger.info("Run complete: %s", summary)
     return summary
 

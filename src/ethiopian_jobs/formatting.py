@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+import csv
+import io
+import re
 from html import escape
 
 from ethiopian_jobs.models import JobPost, PostKind
 
+# Telegram rejects captions longer than this.
+CAPTION_LIMIT = 1024
+_SAFE_NAME = re.compile(r"[^a-z0-9]+")
+
+
+def _link(url: str, text: str) -> str:
+    return f'<a href="{escape(url, quote=True)}">{escape(text)}</a>'
+
 
 def format_telegram(post: JobPost) -> str:
-    """Create a compact Telegram HTML message."""
+    """Build the Telegram HTML message for one post."""
     if post.kind is PostKind.VACANCY:
         heading = "-------- Vacancies --------"
         detail_label = "Registration Date"
@@ -14,17 +25,35 @@ def format_telegram(post: JobPost) -> str:
         heading = "-------- Result --------"
         detail_label = "Announcement"
 
-    return "\n".join(
-        (
-            f"<b>{heading}</b>",
-            "",
-            f"<b>Position:</b> {escape(post.position)}",
-            "",
-            f"<b>{detail_label}:</b> {escape(post.detail)}",
-            "",
-            f"<b>Location:</b> {escape(post.location)}",
-            "",
-            f'<b>URL:</b> <a href="{escape(post.source_url, quote=True)}">'
-            f"{escape(post.source_url)}</a>",
-        )
-    )
+    lines = [
+        f"<b>{heading}</b>",
+        "",
+        f"<b>Position:</b> {escape(post.position)}",
+        "",
+        f"<b>{detail_label}:</b> {escape(post.detail)}",
+        "",
+        f"<b>Location:</b> {escape(post.location)}",
+    ]
+    for label, value in post.extras:
+        lines += ["", f"<b>{escape(label)}:</b> {escape(value)}"]
+    lines += ["", f"<b>URL:</b> {_link(post.source_url, post.source_url)}"]
+    if post.attachment_url:
+        lines += ["", f"<b>Name list:</b> {_link(post.attachment_url, 'Open the PDF')}"]
+    return "\n".join(lines)
+
+
+def fits_caption(text: str) -> bool:
+    return len(text) <= CAPTION_LIMIT
+
+
+def render_candidate_csv(rows: tuple[tuple[str, ...], ...]) -> bytes:
+    """Turn an inline name list into a file people can open and search."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerows(rows)
+    return buffer.getvalue().encode("utf-8-sig")
+
+
+def candidate_filename(post: JobPost) -> str:
+    stem = _SAFE_NAME.sub("-", post.position.casefold()).strip("-") or "candidates"
+    return f"{stem[:60]}-name-list.csv"
