@@ -1,0 +1,149 @@
+# Ethiopian Airlines Jobs Telegram Notifier
+
+Checks the Ethiopian Airlines careers website every hour and posts new local
+vacancies and recruitment results to a Telegram channel. Runs 1:00 to 12:00 on the
+Ethiopian clock, Monday to Saturday, and never posts the same item twice.
+
+Not affiliated with or endorsed by Ethiopian Airlines. Always confirm details on the
+official careers pages.
+
+## Post format
+
+```text
+-------- Vacancies --------
+
+Position: Driver I
+
+Registration Date: July 13, 2026, to July 17, 2026
+
+Location: Ethiopian Airlines Head Quarter, Ethiopian Airports Building (Recruitment & Placement Office)
+
+URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies
+```
+
+Results use the same shape with `Result` and `Announcement` labels.
+
+## How duplicates are avoided
+
+Every card gets two keys.
+
+* **Identity** is the kind, position and location, reduced to letters and digits.
+  It answers "is this the same posting".
+* **Content key** adds the dates or announcement text and the rest of the card, also
+  reduced to letters and digits. It answers "has anything changed".
+
+Because both keys ignore spacing, commas and capitalisation, an editor fixing
+`September 01 ,2026` into `September 01, 2026` does not cause a second post. A real
+date change does.
+
+Delivery uses a claim in SQLite:
+
+1. The post is written as `pending` and committed.
+2. The message is sent.
+3. The row is marked `sent`.
+
+If the send is rejected the claim is deleted and the post is offered again next hour.
+If the process is killed between steps 2 and 3, the claim is settled as `sent` on the
+next start, because Telegram has no way to tell us whether the message arrived and a
+duplicate notice is worse than a missed one.
+
+A file lock keeps two runs from overlapping.
+
+## Requirements
+
+* Linux with Python 3.11 or newer
+* A Telegram bot token from [@BotFather](https://t.me/BotFather)
+* A channel where that bot is an administrator with permission to post
+* The channel username, for example `@my_jobs_channel`, or a numeric chat ID
+
+## Commands
+
+```bash
+ethiopian-jobs check      # scrape and print, sends nothing, saves nothing
+ethiopian-jobs schedule   # print the next eight run times
+ethiopian-jobs prime      # mark everything on the site as already seen
+ethiopian-jobs run        # one pass, sends what is new
+ethiopian-jobs watch      # stay running and check on schedule
+```
+
+Run `prime` once before the first real run, otherwise the first `run` posts every
+vacancy and result currently on the site.
+
+## Configuration
+
+Copy `.env.example` to `.env` and edit it.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | required | Bot token from @BotFather |
+| `TELEGRAM_CHAT_ID` | required | Channel username or numeric chat ID |
+| `DATABASE_PATH` | `data/jobs.db` | SQLite delivery history |
+| `SCHEDULE_TIMEZONE` | `Africa/Addis_Ababa` | Timezone the window is measured in |
+| `ACTIVE_HOURS` | `7-18` | First and last hour, inclusive |
+| `ACTIVE_DAYS` | `mon-sat` | Days to run, `mon-sat` or `mon,wed,fri` |
+| `REQUEST_TIMEOUT_SECONDS` | `30` | HTTP timeout |
+| `SEND_GAP_SECONDS` | `3.5` | Gap between messages, keeps under Telegram's channel rate limit |
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
+
+## Install on a server
+
+```bash
+sudo useradd --system --home-dir /opt/ethiopian-jobs --shell /usr/sbin/nologin ethiopian-jobs
+sudo mkdir -p /opt/ethiopian-jobs
+sudo chown ethiopian-jobs:ethiopian-jobs /opt/ethiopian-jobs
+
+sudo -u ethiopian-jobs git clone https://github.com/melastore/ethiopian-airlines-jobs-telegram.git /opt/ethiopian-jobs
+cd /opt/ethiopian-jobs
+sudo -u ethiopian-jobs python3 -m venv .venv
+sudo -u ethiopian-jobs .venv/bin/pip install .
+
+sudo -u ethiopian-jobs cp .env.example .env
+sudo -u ethiopian-jobs nano .env
+sudo -u ethiopian-jobs .venv/bin/ethiopian-jobs prime
+```
+
+### systemd timer
+
+The timer is the recommended setup. Nothing stays running between checks.
+
+```bash
+sudo cp deploy/ethiopian-jobs.service deploy/ethiopian-jobs.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ethiopian-jobs.timer
+systemctl list-timers ethiopian-jobs.timer
+```
+
+The timer is written in UTC. `04:00` to `15:00` UTC is `07:00` to `18:00` in Addis
+Ababa. Ethiopia does not observe daylight saving, so the two never drift apart.
+
+### Long running service
+
+If you would rather keep one process alive, the schedule is enforced inside the
+program as well.
+
+```bash
+sudo cp deploy/ethiopian-jobs-watch.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ethiopian-jobs-watch
+journalctl -u ethiopian-jobs-watch -f
+```
+
+### cron
+
+```cron
+CRON_TZ=Africa/Addis_Ababa
+0 7-18 * * 1-6 /opt/ethiopian-jobs/.venv/bin/ethiopian-jobs run >> /var/log/ethiopian-jobs.log 2>&1
+```
+
+## Development
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest
+.venv/bin/ruff check src tests
+```
+
+## License
+
+MIT. See [LICENSE](LICENSE).

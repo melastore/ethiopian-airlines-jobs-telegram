@@ -1,0 +1,22 @@
+[Unit]
+Description=Ethiopian Airlines jobs Telegram notifier (long running)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ethiopian-jobs
+Group=ethiopian-jobs
+WorkingDirectory=/opt/ethiopian-jobs
+EnvironmentFile=/opt/ethiopian-jobs/.env
+ExecStart=/opt/ethiopian-jobs/.venv/bin/ethiopian-jobs watch
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ethiopian-jobs/data
+
+[Install]
+WantedBy=multi-user.target

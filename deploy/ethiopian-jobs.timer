@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly Ethiopian Airlines careers check
+
+[Timer]
+# 04:00-15:00 UTC is 07:00-18:00 in Addis Ababa, which is 1:00 to 12:00 on the
+# Ethiopian clock. Written in UTC so it also works on older systemd builds.
+OnCalendar=Mon-Sat *-*-* 04..15:00:00 UTC
+Persistent=true
+AccuracySec=30s
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

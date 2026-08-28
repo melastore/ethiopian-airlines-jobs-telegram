@@ -1,0 +1,17 @@
+[Unit]
+Description=Check Ethiopian Airlines careers pages and post new items to Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ethiopian-jobs
+Group=ethiopian-jobs
+WorkingDirectory=/opt/ethiopian-jobs
+EnvironmentFile=/opt/ethiopian-jobs/.env
+ExecStart=/opt/ethiopian-jobs/.venv/bin/ethiopian-jobs run
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ethiopian-jobs/data
