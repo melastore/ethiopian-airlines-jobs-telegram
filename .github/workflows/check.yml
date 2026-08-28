@@ -63,4 +63,15 @@ jobs:
           git config user.email "melastore@users.noreply.github.com"
           git add jobs.db
           git commit -q -m "Delivery history $(date -u +%Y-%m-%dT%H:%MZ)"
-          git push -q --force origin state
+          # A push that never lands leaves stale history behind, and the next run
+          # would repost whatever this one just sent.
+          for attempt in 1 2 3 4 5; do
+            if git push -q --force origin state; then
+              echo "history saved on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::push attempt $attempt failed, retrying"
+            sleep $((attempt * 10))
+          done
+          echo "::error::could not save the delivery history, the next run may repeat posts"
+          exit 1
