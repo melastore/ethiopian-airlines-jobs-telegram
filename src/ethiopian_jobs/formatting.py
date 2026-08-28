@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import csv
-import io
-import re
 from html import escape
 
 from ethiopian_jobs.models import JobPost, PostKind
 
 # Telegram rejects captions longer than this.
 CAPTION_LIMIT = 1024
-_SAFE_NAME = re.compile(r"[^a-z0-9]+")
 
 
 def _link(url: str, text: str) -> str:
@@ -44,16 +40,3 @@ def format_telegram(post: JobPost) -> str:
 
 def fits_caption(text: str) -> bool:
     return len(text) <= CAPTION_LIMIT
-
-
-def render_candidate_csv(rows: tuple[tuple[str, ...], ...]) -> bytes:
-    """Turn an inline name list into a file people can open and search."""
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerows(rows)
-    return buffer.getvalue().encode("utf-8-sig")
-
-
-def candidate_filename(post: JobPost) -> str:
-    stem = _SAFE_NAME.sub("-", post.position.casefold()).strip("-") or "candidates"
-    return f"{stem[:60]}-name-list.csv"

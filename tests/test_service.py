@@ -73,7 +73,7 @@ def test_failed_send_is_offered_again(tmp_path: Path) -> None:
         assert store.unseen([item]) == [item]
 
 
-def test_inline_name_list_becomes_a_csv_attachment() -> None:
+def test_inline_name_list_becomes_a_pdf_attachment() -> None:
     item = JobPost(
         kind=PostKind.RESULT,
         position="Spa Therapist",
@@ -83,8 +83,8 @@ def test_inline_name_list_becomes_a_csv_attachment() -> None:
         candidate_rows=(("SER NO.", "FULL NAME"), ("1", "Abebe K."), ("2", "Sara T.")),
     )
     filename, content = name_list(item, None)
-    assert filename == "spa-therapist-name-list.csv"
-    assert b"Abebe K." in content
+    assert filename == "spa-therapist-name-list.pdf"
+    assert content.startswith(b"%PDF-")
 
 
 def test_a_card_without_a_name_list_sends_no_file() -> None:

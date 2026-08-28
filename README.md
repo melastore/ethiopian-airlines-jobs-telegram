@@ -54,8 +54,11 @@ Every result card publishes the candidates who passed. The site does this in one
 two ways, and both are delivered as a file alongside the message.
 
 * A linked PDF is downloaded and uploaded to Telegram as it is.
-* An inline table is written out as a UTF-8 CSV, so a list of ten thousand names stays
-  searchable instead of being cut off by Telegram's message limit.
+* An inline table is drawn into a landscape PDF, with the heading row repeated on every
+  page. A list of ten thousand names takes about three seconds to build.
+
+Both arrive as PDFs so they open straight in Telegram on any phone, with no other app
+needed.
 
 When the message is short enough it becomes the file's caption, so each posting is a
 single item in the channel.

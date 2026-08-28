@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from ethiopian_jobs.client import SourceClient, TelegramClient, TelegramError, TelegramUncertain
-from ethiopian_jobs.formatting import candidate_filename, render_candidate_csv
+from ethiopian_jobs.documents import candidate_filename, render_candidate_pdf
 from ethiopian_jobs.models import JobPost
 from ethiopian_jobs.parser import (
     RESULTS_URL,
@@ -55,7 +55,10 @@ def name_list(post: JobPost, source: SourceClient | None) -> tuple[str, bytes] |
         else:
             return attachment_filename(post.attachment_url), content
     if post.candidate_rows:
-        return candidate_filename(post), render_candidate_csv(post.candidate_rows)
+        try:
+            return candidate_filename(post), render_candidate_pdf(post)
+        except Exception as error:
+            logger.warning("Could not build the name list for %s: %s", post.label, error)
     return None
 
 
