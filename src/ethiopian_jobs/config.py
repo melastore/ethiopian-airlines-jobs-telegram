@@ -76,13 +76,14 @@ class Settings:
         if log_level not in _LOG_LEVELS:
             raise ConfigError(f"LOG_LEVEL must be one of {', '.join(sorted(_LOG_LEVELS))}")
 
-        first_hour, last_hour = _hour_window("ACTIVE_HOURS", "7-18")
+        first_hour, last_hour = _hour_window("ACTIVE_HOURS", "0-23")
         try:
             schedule = Schedule.build(
                 timezone=os.getenv("SCHEDULE_TIMEZONE", DEFAULT_TIMEZONE).strip(),
                 first_hour=first_hour,
                 last_hour=last_hour,
-                weekdays=parse_weekdays(os.getenv("ACTIVE_DAYS", "mon-sat")),
+                weekdays=parse_weekdays(os.getenv("ACTIVE_DAYS", "mon-sun")),
+                step_hours=_whole_number("CHECK_EVERY_HOURS", "2") or 1,
             )
         except ScheduleError as error:
             raise ConfigError(str(error)) from error

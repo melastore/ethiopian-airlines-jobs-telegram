@@ -2,8 +2,8 @@ name: check careers pages
 
 on:
   schedule:
-    # 04:00-15:00 UTC is 07:00-18:00 in Addis Ababa, Monday to Saturday.
-    - cron: "0 4-15 * * 1-6"
+    # Every two hours, every day. Odd hours in UTC are even hours in Addis Ababa.
+    - cron: "0 1-23/2 * * *"
   workflow_dispatch:
 
 # Two runs at once could send the same posting twice.

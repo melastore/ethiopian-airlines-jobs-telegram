@@ -1,9 +1,8 @@
 # Ethiopian Airlines Jobs Telegram Notifier
 
-Checks the Ethiopian Airlines careers website every hour and posts new local
-vacancies and recruitment results to a Telegram channel, with the published candidate
-name list attached. Runs 1:00 to 12:00 on the Ethiopian clock, Monday to Saturday, and
-never posts the same item twice.
+Checks the Ethiopian Airlines careers website every two hours, every day, and posts
+new local vacancies and recruitment results to a Telegram channel, with the published
+candidate name list attached. It never posts the same item twice.
 
 Not affiliated with or endorsed by Ethiopian Airlines. Always confirm details on the
 official careers pages.
@@ -124,8 +123,9 @@ Copy `.env.example` to `.env` and edit it.
 | `TELEGRAM_CHAT_ID` | required | Channel username or numeric chat ID |
 | `DATABASE_PATH` | `data/jobs.db` | SQLite delivery history |
 | `SCHEDULE_TIMEZONE` | `Africa/Addis_Ababa` | Timezone the window is measured in |
-| `ACTIVE_HOURS` | `7-18` | First and last hour, inclusive |
-| `ACTIVE_DAYS` | `mon-sat` | Days to run, `mon-sat` or `mon,wed,fri` |
+| `ACTIVE_HOURS` | `0-23` | First and last hour, inclusive |
+| `ACTIVE_DAYS` | `mon-sun` | Days to run, `mon-sat` or `mon,wed,fri` |
+| `CHECK_EVERY_HOURS` | `2` | Hours between checks |
 | `REQUEST_TIMEOUT_SECONDS` | `30` | HTTP timeout |
 | `SEND_GAP_SECONDS` | `3.5` | Gap between messages, keeps under Telegram's channel rate limit |
 | `MAX_POSTS_PER_RUN` | `12` | Stop instead of sending more than this in one run. `0` turns it off |
@@ -159,8 +159,8 @@ sudo systemctl enable --now ethiopian-jobs.timer
 systemctl list-timers ethiopian-jobs.timer
 ```
 
-The timer is written in UTC. `04:00` to `15:00` UTC is `07:00` to `18:00` in Addis
-Ababa. Ethiopia does not observe daylight saving, so the two never drift apart.
+The timer fires every two hours. Ethiopia does not observe daylight saving, so local
+time and UTC never drift apart.
 
 ### Long running service
 
@@ -199,8 +199,7 @@ every couple of months.
 ### cron
 
 ```cron
-CRON_TZ=Africa/Addis_Ababa
-0 7-18 * * 1-6 /opt/ethiopian-jobs/.venv/bin/ethiopian-jobs run >> /var/log/ethiopian-jobs.log 2>&1
+0 */2 * * * /opt/ethiopian-jobs/.venv/bin/ethiopian-jobs run >> /var/log/ethiopian-jobs.log 2>&1
 ```
 
 ## Development

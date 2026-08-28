@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-# Ethiopian clock 1:00 to 12:00 is 07:00 to 18:00 local time.
 DEFAULT_TIMEZONE = "Africa/Addis_Ababa"
-DEFAULT_FIRST_HOUR = 7
-DEFAULT_LAST_HOUR = 18
-DEFAULT_WEEKDAYS = frozenset(range(6))  # Monday to Saturday
+DEFAULT_FIRST_HOUR = 0
+DEFAULT_LAST_HOUR = 23
+DEFAULT_STEP_HOURS = 2
+DEFAULT_WEEKDAYS = frozenset(range(7))  # Every day
 
 _DAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -49,12 +49,15 @@ class Schedule:
     first_hour: int = DEFAULT_FIRST_HOUR
     last_hour: int = DEFAULT_LAST_HOUR
     weekdays: frozenset[int] = DEFAULT_WEEKDAYS
+    step_hours: int = DEFAULT_STEP_HOURS
 
     def __post_init__(self) -> None:
         if not 0 <= self.first_hour <= 23 or not 0 <= self.last_hour <= 23:
             raise ScheduleError("Hours must be between 0 and 23")
         if self.first_hour > self.last_hour:
             raise ScheduleError("The first hour cannot come after the last hour")
+        if not 1 <= self.step_hours <= 24:
+            raise ScheduleError("The gap between checks must be 1 to 24 hours")
 
     @classmethod
     def build(
@@ -63,19 +66,24 @@ class Schedule:
         first_hour: int = DEFAULT_FIRST_HOUR,
         last_hour: int = DEFAULT_LAST_HOUR,
         weekdays: frozenset[int] = DEFAULT_WEEKDAYS,
+        step_hours: int = DEFAULT_STEP_HOURS,
     ) -> Schedule:
         try:
             zone = ZoneInfo(timezone)
         except Exception as error:
             raise ScheduleError(f"Unknown timezone '{timezone}'") from error
-        return cls(zone, first_hour, last_hour, weekdays)
+        return cls(zone, first_hour, last_hour, weekdays, step_hours)
 
     def local(self, moment: datetime) -> datetime:
         return moment.astimezone(self.timezone)
 
     def is_open(self, moment: datetime) -> bool:
         here = self.local(moment)
-        return here.weekday() in self.weekdays and self.first_hour <= here.hour <= self.last_hour
+        if here.weekday() not in self.weekdays:
+            return False
+        if not self.first_hour <= here.hour <= self.last_hour:
+            return False
+        return (here.hour - self.first_hour) % self.step_hours == 0
 
     def next_slot(self, after: datetime) -> datetime:
         """First slot strictly after the given moment."""
@@ -91,5 +99,11 @@ class Schedule:
         return max((slot - now).total_seconds(), 0.0)
 
     def describe(self) -> str:
-        days = ", ".join(_DAY_NAMES[day].capitalize() for day in sorted(self.weekdays))
-        return f"{self.first_hour:02d}:00-{self.last_hour:02d}:00 {self.timezone.key} on {days}"
+        days = (
+            "every day"
+            if len(self.weekdays) == 7
+            else ", ".join(_DAY_NAMES[day].capitalize() for day in sorted(self.weekdays))
+        )
+        gap = "hourly" if self.step_hours == 1 else f"every {self.step_hours} hours"
+        window = f"{self.first_hour:02d}:00-{self.last_hour:02d}:00"
+        return f"{gap} between {window} {self.timezone.key}, {days}"
