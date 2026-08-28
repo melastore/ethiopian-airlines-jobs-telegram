@@ -19,6 +19,10 @@ from ethiopian_jobs.storage import SentStore
 logger = logging.getLogger(__name__)
 
 
+class FloodGuard(RuntimeError):
+    """Raised when a run wants to send far more than a normal hour brings."""
+
+
 @dataclass(frozen=True, slots=True)
 class RunSummary:
     found: int
@@ -67,6 +71,7 @@ def deliver(
     store: SentStore,
     telegram: TelegramClient,
     source: SourceClient | None = None,
+    limit: int = 0,
 ) -> RunSummary:
     """Send every post that has never been delivered.
 
@@ -76,6 +81,14 @@ def deliver(
     """
     store.settle_interrupted()
     unseen = store.unseen(posts)
+    if limit and len(unseen) > limit:
+        # The site never publishes this much in an hour, so the history is the
+        # thing that is wrong. Sending would spam every subscriber.
+        raise FloodGuard(
+            f"{len(unseen)} posts look new but the limit is {limit}. "
+            "The delivery history is probably missing. "
+            "Check it, then run 'prime' or raise MAX_POSTS_PER_RUN."
+        )
     sent = 0
     failed = 0
     uncertain = 0

@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import pytest
+
 from ethiopian_jobs.client import TelegramError, TelegramUncertain
 from ethiopian_jobs.models import JobPost, PostKind
-from ethiopian_jobs.service import deliver, name_list
+from ethiopian_jobs.service import FloodGuard, deliver, name_list
 from ethiopian_jobs.storage import SentStore
 
 
@@ -89,3 +91,22 @@ def test_inline_name_list_becomes_a_pdf_attachment() -> None:
 
 def test_a_card_without_a_name_list_sends_no_file() -> None:
     assert name_list(post("Driver I"), None) is None
+
+
+def test_flood_guard_blocks_a_run_with_a_lost_history(tmp_path: Path) -> None:
+    items = [post(f"Driver {number}") for number in range(5)]
+    telegram = FakeTelegram()
+
+    with SentStore(tmp_path / "jobs.db") as store:
+        with pytest.raises(FloodGuard):
+            deliver(items, store, telegram, limit=3)  # type: ignore[arg-type]
+        assert telegram.sent == []
+        assert len(store.unseen(items)) == 5
+
+
+def test_flood_guard_allows_a_normal_run(tmp_path: Path) -> None:
+    items = [post(f"Driver {number}") for number in range(3)]
+    telegram = FakeTelegram()
+
+    with SentStore(tmp_path / "jobs.db") as store:
+        assert deliver(items, store, telegram, limit=12).sent == 3  # type: ignore[arg-type]

@@ -21,6 +21,16 @@ class ConfigError(ValueError):
     pass
 
 
+def _whole_number(name: str, default: str) -> int:
+    try:
+        value = int(os.getenv(name, default))
+    except ValueError as error:
+        raise ConfigError(f"{name} must be a whole number") from error
+    if value < 0:
+        raise ConfigError(f"{name} cannot be negative")
+    return value
+
+
 def _positive_float(name: str, default: str) -> float:
     try:
         value = float(os.getenv(name, default))
@@ -50,6 +60,7 @@ class Settings:
     database_path: Path
     request_timeout: float
     send_gap: float
+    max_posts_per_run: int
     schedule: Schedule
     log_level: str
 
@@ -82,6 +93,7 @@ class Settings:
             database_path=Path(os.getenv("DATABASE_PATH", "data/jobs.db")).expanduser(),
             request_timeout=_positive_float("REQUEST_TIMEOUT_SECONDS", "30"),
             send_gap=_positive_float("SEND_GAP_SECONDS", str(DEFAULT_SEND_GAP)),
+            max_posts_per_run=_whole_number("MAX_POSTS_PER_RUN", "12"),
             schedule=schedule,
             log_level=log_level,
         )

@@ -89,6 +89,11 @@ duplicate notice is worse than a missed one.
 
 A file lock keeps two runs from overlapping.
 
+If a run ever finds more new postings than `MAX_POSTS_PER_RUN`, it sends nothing and
+exits with an error. The site does not publish twelve things in an hour, so a number
+that high means the history was lost rather than that the airline had a busy morning.
+Without this, one missing database would repost everything to every subscriber.
+
 ## Requirements
 
 * Linux with Python 3.11 or newer
@@ -123,6 +128,7 @@ Copy `.env.example` to `.env` and edit it.
 | `ACTIVE_DAYS` | `mon-sat` | Days to run, `mon-sat` or `mon,wed,fri` |
 | `REQUEST_TIMEOUT_SECONDS` | `30` | HTTP timeout |
 | `SEND_GAP_SECONDS` | `3.5` | Gap between messages, keeps under Telegram's channel rate limit |
+| `MAX_POSTS_PER_RUN` | `12` | Stop instead of sending more than this in one run. `0` turns it off |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
 
 ## Install on a server

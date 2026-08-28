@@ -21,9 +21,18 @@ jobs:
 
       - name: Restore the delivery history
         run: |
-          git fetch origin state --depth=1 || echo "no state branch yet"
+          set -euo pipefail
           mkdir -p data
-          git show origin/state:jobs.db > data/jobs.db || echo "starting with an empty history"
+          if git fetch --depth=1 origin state 2>/dev/null \
+             && git cat-file -e FETCH_HEAD:jobs.db 2>/dev/null; then
+            git show FETCH_HEAD:jobs.db > data/jobs.db
+            echo "restored $(stat -c%s data/jobs.db) bytes"
+          else
+            echo "::warning::no history found, the flood guard will stop a mass send"
+          fi
+
+      - name: Check the history is readable
+        run: python3 scripts/check_history.py data/jobs.db
 
       - uses: actions/setup-python@v6
         with:

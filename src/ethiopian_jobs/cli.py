@@ -10,7 +10,7 @@ from ethiopian_jobs.client import SourceClient, TelegramClient
 from ethiopian_jobs.config import ConfigError, Settings
 from ethiopian_jobs.formatting import format_telegram
 from ethiopian_jobs.models import JobPost
-from ethiopian_jobs.service import RunSummary, deliver, scrape
+from ethiopian_jobs.service import FloodGuard, RunSummary, deliver, scrape
 from ethiopian_jobs.storage import AlreadyRunningError, RunLock, SentStore
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ def _run_once(settings: Settings) -> RunSummary:
                 settings.send_gap,
             ) as telegram,
         ):
-            summary = deliver(posts, store, telegram, source)
+            summary = deliver(posts, store, telegram, source, settings.max_posts_per_run)
     logger.info("Run complete: %s", summary)
     return summary
 
@@ -140,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if summary.failed else 0
 
         return _watch(settings)
+    except FloodGuard as error:
+        logger.error("Refusing to send: %s", error)
+        return 4
     except AlreadyRunningError as error:
         print(f"{error}", file=sys.stderr)
         return 3
