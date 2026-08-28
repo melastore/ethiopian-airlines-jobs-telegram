@@ -168,6 +168,21 @@ sudo systemctl enable --now ethiopian-jobs-watch
 journalctl -u ethiopian-jobs-watch -f
 ```
 
+### GitHub Actions
+
+The repository can run the checks itself, with no server of your own.
+
+1. Settings, Secrets and variables, Actions, then add `TELEGRAM_BOT_TOKEN` and
+   `TELEGRAM_CHAT_ID`.
+2. Run the `check careers pages` workflow once by hand to seed the history.
+
+The workflow keeps its delivery history on a `state` branch, so the schedule and the
+history survive independently of the cache. A `concurrency` group stops two runs from
+sending the same posting.
+
+Scheduled runs on GitHub are best effort and can be late by several minutes. That does
+not lose anything, because the next run still sees whatever has not been sent.
+
 ### cron
 
 ```cron

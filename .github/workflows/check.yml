@@ -1,0 +1,57 @@
+name: check careers pages
+
+on:
+  schedule:
+    # 04:00-15:00 UTC is 07:00-18:00 in Addis Ababa, Monday to Saturday.
+    - cron: "0 4-15 * * 1-6"
+  workflow_dispatch:
+
+# Two runs at once could send the same posting twice.
+concurrency:
+  group: careers-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Restore the delivery history
+        run: |
+          git fetch origin state --depth=1 || echo "no state branch yet"
+          mkdir -p data
+          git show origin/state:jobs.db > data/jobs.db || echo "starting with an empty history"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - run: pip install .
+
+      - name: Post anything new
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DATABASE_PATH: data/jobs.db
+        run: ethiopian-jobs run
+
+      - name: Save the delivery history
+        # Runs even when a send failed, so what did go out is never sent twice.
+        if: always()
+        run: |
+          test -f data/jobs.db || exit 0
+          git config user.name "melastore"
+          git config user.email "melastore@users.noreply.github.com"
+          rm -rf /tmp/state && mkdir /tmp/state
+          cp data/jobs.db /tmp/state/jobs.db
+          cd /tmp/state
+          git init -q -b state
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git config user.name "melastore"
+          git config user.email "melastore@users.noreply.github.com"
+          git add jobs.db
+          git commit -q -m "Delivery history $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q --force origin state

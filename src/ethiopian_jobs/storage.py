@@ -136,13 +136,14 @@ class SentStore(AbstractContextManager["SentStore"]):
 
     @staticmethod
     def _payload(post: JobPost) -> str:
+        # The card body is deliberately left out. It is already folded into the
+        # content key, and one result page carried three quarters of a megabyte.
         return json.dumps(
             {
                 "position": post.position,
                 "location": post.location,
                 "detail": post.detail,
                 "source_url": post.source_url,
-                "source_key": post.source_key,
             },
             ensure_ascii=False,
             separators=(",", ":"),

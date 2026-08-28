@@ -30,8 +30,33 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _configure_logging(level: str) -> None:
-    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+class _Redactor(logging.Filter):
+    """Keep the bot token out of the logs. Its URL carries it in plain sight."""
+
+    def __init__(self, secret: str) -> None:
+        super().__init__()
+        self._secret = secret
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if self._secret:
+            record.msg = str(record.msg).replace(self._secret, "***")
+            if record.args:
+                record.args = tuple(
+                    str(arg).replace(self._secret, "***") if isinstance(arg, str) else arg
+                    for arg in record.args
+                )
+        return True
+
+
+def _configure_logging(settings: Settings) -> None:
+    logging.basicConfig(
+        level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
+    # httpx logs every request URL at INFO, and the Telegram URL contains the token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    redactor = _Redactor(settings.telegram_bot_token)
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(redactor)
 
 
 def _scrape(settings: Settings) -> list[JobPost]:
@@ -86,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as error:
         print(f"Configuration error: {error}", file=sys.stderr)
         return 2
-    _configure_logging(settings.log_level)
+    _configure_logging(settings)
 
     try:
         if args.command == "check":
