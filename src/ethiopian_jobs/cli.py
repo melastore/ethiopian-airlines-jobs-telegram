@@ -115,8 +115,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "check":
+            tag = settings.telegram_chat_id if settings.telegram_chat_id.startswith("@") else ""
             for post in _scrape(settings):
-                print(format_telegram(post), "\n")
+                print(format_telegram(post, channel_tag=tag), "\n")
             return 0
 
         if args.command == "schedule":

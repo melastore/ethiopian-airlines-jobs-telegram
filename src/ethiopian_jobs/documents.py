@@ -84,10 +84,12 @@ def _draw_table(pdf: FPDF, rows: list[list[str]]) -> None:
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_fill_color(230, 230, 230)
         for width, cell in zip(widths, heading, strict=True):
-            pdf.cell(width, _ROW_HEIGHT, cell, border=1, fill=True)
+            pdf.cell(width, _ROW_HEIGHT, _fit(pdf, cell, width), border=1, fill=True)
         pdf.ln(_ROW_HEIGHT)
         pdf.set_font("Helvetica", "", 8)
 
+    if pdf.get_y() + _ROW_HEIGHT > pdf.h - pdf.b_margin:
+        pdf.add_page()
     draw_heading()
     for row in body:
         if pdf.get_y() + _ROW_HEIGHT > pdf.h - pdf.b_margin:

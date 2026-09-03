@@ -88,7 +88,8 @@ def _attachment(panel: Tag, source_url: str) -> str:
 
 def _candidate_rows(panel: Tag) -> tuple[tuple[str, ...], ...]:
     """The published name list, when the card carries it as a table."""
-    block = _body_blocks(panel).get(_CANDIDATE_LABEL)
+    blocks = _body_blocks(panel)
+    block = blocks.get(_CANDIDATE_LABEL) or blocks.get("candidate list")
     table = block.find("table") if block is not None else None
     if table is None:
         return ()
@@ -105,7 +106,10 @@ def _candidate_rows(panel: Tag) -> tuple[tuple[str, ...], ...]:
 def _shorten(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
-    return text[: text.rfind(" ", 0, limit)].rstrip(" ,.;:") + "..."
+    cutoff = text.rfind(" ", 0, limit)
+    if cutoff == -1:
+        cutoff = limit
+    return text[:cutoff].rstrip(" ,.;:") + "..."
 
 
 def _source_key(panel: Tag) -> str:

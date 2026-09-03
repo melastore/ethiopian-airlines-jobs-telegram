@@ -10,37 +10,44 @@ official careers pages.
 ## Post format
 
 ```text
--------- Vacancies --------
+✈️ ETHIOPIAN AIRLINES • VACANCY
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-Position: Driver I
+💼 Position: Driver I
+📅 Registration Date: July 13, 2026, to July 17, 2026
+📍 Location: Ethiopian Airlines Head Quarter (Recruitment Office)
+⏰ Closing Date: July 17, 2026
 
-Registration Date: July 13, 2026, to July 17, 2026
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 Careers Portal: View on official website
+🔔 Stay updated: @ethiopia_airline_vaccancy_result
 
-Location: Ethiopian Airlines Head Quarter, Ethiopian Airports Building (Recruitment & Placement Office)
-
-Closing Date: July 17, 2026
-
-URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies#panel_0
+[ 🌐 View Vacancy ]  [ ↗️ Share Post ]
 ```
 
-Results carry the announcement text and the size of the name list:
+Results carry the announcement text, blockquote details, and interactive buttons:
 
 ```text
--------- Result --------
+📋 ETHIOPIAN AIRLINES • RECRUITMENT RESULT
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-Position: Spa Therapist
+💼 Position: Spa Therapist
+📢 Announcement: CALL FOR COMPETENCY BASED INTERVIEW
+📍 Location: Ethiopian Skylight Hotel
+👥 Candidates Listed: 11
 
-Announcement: CALL FOR COMPETENCY BASED INTERVIEW
+📝 Details:
+> Among those candidates who submitted their application for the position of
+> Spa Therapist, the following listed applicants are requested to come for
+> Competency Based Interview (CBI) on Friday, August 28, 2026 ...
 
-Location: Ethiopian Skylight Hotel
+━━━━━━━━━━━━━━━━━━━━━━━━
+📎 Official candidate list PDF attached below.
+🔗 Careers Portal: View on official website
+🔔 Stay updated: @ethiopia_airline_vaccancy_result
 
-Details: Among those candidates who submitted their application for the position of
-Spa Therapist, the following listed applicants are requested to come for Competency
-Based Interview (CBI) on Friday, August 28, 2026 ...
-
-Candidates listed: 11
-
-URL: https://corporate.ethiopianairlines.com/AboutEthiopian/careers/results#panel_0
+[ 🌐 View Announcement ]  [ 📄 Official PDF ]
+[ ↗️ Share Post ]
 ```
 
 The `URL` points at the card itself rather than the top of the page. The site has no
@@ -128,7 +135,7 @@ Copy `.env.example` to `.env` and edit it.
 | `CHECK_EVERY_HOURS` | `2` | Hours between checks |
 | `REQUEST_TIMEOUT_SECONDS` | `30` | HTTP timeout |
 | `SEND_GAP_SECONDS` | `3.5` | Gap between messages, keeps under Telegram's channel rate limit |
-| `MAX_POSTS_PER_RUN` | `12` | Stop instead of sending more than this in one run. `0` turns it off |
+| `MAX_POSTS_PER_RUN` | `25` | Stop instead of sending more than this in one run. `0` turns it off |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
 
 ## Install on a server

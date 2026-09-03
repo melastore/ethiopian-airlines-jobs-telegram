@@ -4,7 +4,7 @@ import pytest
 
 from ethiopian_jobs.client import TelegramError, TelegramUncertain
 from ethiopian_jobs.models import JobPost, PostKind
-from ethiopian_jobs.service import FloodGuard, deliver, name_list
+from ethiopian_jobs.service import FloodGuard, deliver, name_list, scrape
 from ethiopian_jobs.storage import SentStore
 
 
@@ -110,3 +110,33 @@ def test_flood_guard_allows_a_normal_run(tmp_path: Path) -> None:
 
     with SentStore(tmp_path / "jobs.db") as store:
         assert deliver(items, store, telegram, limit=12).sent == 3  # type: ignore[arg-type]
+
+
+class FakeSource:
+    def __init__(self, vacancies_html: str, results_html: str | None = None) -> None:
+        self._v = vacancies_html
+        self._r = results_html
+
+    def get(self, url: str) -> str:
+        if "vacancies" in url:
+            return self._v
+        if self._r is None:
+            raise RuntimeError("Results page down")
+        return self._r
+
+
+def test_scrape_survives_partial_page_failure(fixture_dir: Path) -> None:
+    vacancies_html = (fixture_dir / "vacancies.html").read_text()
+    source = FakeSource(vacancies_html=vacancies_html, results_html=None)
+    posts = scrape(source)  # type: ignore[arg-type]
+    assert len(posts) == 1
+    assert posts[0].position == "Driver I"
+
+
+def test_scrape_raises_when_both_pages_fail() -> None:
+    class FailingSource:
+        def get(self, url: str) -> str:
+            raise RuntimeError("Site unreachable")
+
+    with pytest.raises(RuntimeError, match="Site unreachable"):
+        scrape(FailingSource())  # type: ignore[arg-type]

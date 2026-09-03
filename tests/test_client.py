@@ -32,6 +32,7 @@ def test_telegram_sends_expected_payload() -> None:
     assert received["chat_id"] == "@jobs"
     assert received["parse_mode"] == "HTML"
     assert "Driver I" in str(received["text"])
+    assert "reply_markup" in received
 
 
 def test_telegram_retries_rate_limit_from_json() -> None:
@@ -145,3 +146,40 @@ def test_document_is_uploaded_with_the_message_as_caption() -> None:
     assert b"names.pdf" in body
     assert b"%PDF-1.4 fake" in body
     assert b"Driver I" in body
+
+
+def test_retry_delay_honors_explicit_retry_after_over_30s() -> None:
+    response = httpx.Response(429, json={"ok": False, "parameters": {"retry_after": 75}})
+    body = response.json()
+    assert TelegramClient._retry_delay(response, 0, body) == 75.0
+
+
+def test_document_failure_after_message_sent_raises_telegram_uncertain() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if "sendMessage" in str(request.url):
+            return httpx.Response(200, json={"ok": True})
+        return httpx.Response(400, json={"ok": False, "description": "Bad Request: upload failed"})
+
+    post = JobPost(
+        kind=PostKind.RESULT,
+        position="Driver I",
+        location="Head Office",
+        detail="A" * 1200,
+        source_url="https://example.com/results",
+    )
+
+    with (
+        TelegramClient(
+            "secret-token", "@jobs", transport=httpx.MockTransport(handler)
+        ) as telegram,
+        pytest.raises(
+            TelegramUncertain, match="Announcement was posted but document attachment failed"
+        ),
+    ):
+        telegram.send(post, ("names.pdf", b"%PDF-1.4 fake"))
+
+    assert calls == 2

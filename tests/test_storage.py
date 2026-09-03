@@ -99,3 +99,28 @@ def test_run_lock_rejects_overlapping_process(tmp_path: Path) -> None:
     database = tmp_path / "jobs.db"
     with RunLock(database), pytest.raises(AlreadyRunningError), RunLock(database):
         pass
+
+
+def test_unicode_punctuation_does_not_resend(tmp_path: Path) -> None:
+    # Hyphen vs en-dash (–) vs em-dash (—) and straight quote vs curly quote
+    original = make_post("July 13 - July 17, 2026 for Children's Club")
+    updated = make_post("July 13 – July 17, 2026 for Children’s Club")
+    with SentStore(tmp_path / "jobs.db") as store:
+        store.mark_many([original])
+        assert store.unseen([updated]) == []
+
+
+def test_run_lock_double_close_is_safe(tmp_path: Path) -> None:
+    database = tmp_path / "jobs.db"
+    lock = RunLock(database)
+    lock.close()
+    lock.close()  # Must not raise ValueError on closed file
+
+
+def test_sent_store_count(tmp_path: Path) -> None:
+    post = make_post()
+    database = tmp_path / "jobs.db"
+    with SentStore(database) as store:
+        assert store.count() == 0
+        store.mark_many([post])
+        assert store.count() == 1

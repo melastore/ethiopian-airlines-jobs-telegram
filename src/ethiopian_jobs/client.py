@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable
 from contextlib import suppress
 
 import httpx
 
-from ethiopian_jobs.formatting import fits_caption, format_telegram
+from ethiopian_jobs.formatting import fits_caption, format_telegram, make_inline_keyboard
 from ethiopian_jobs.models import JobPost
 
 USER_AGENT = "EthiopianJobsTelegram/1.1 (+careers notifier)"
@@ -105,7 +106,9 @@ class TelegramClient:
         if delay is None:
             with suppress(ValueError, TypeError, KeyError):
                 delay = float(response.headers["Retry-After"])
-        return min(delay if delay is not None else 2**attempt, 30.0)
+        if delay is not None:
+            return max(delay, 1.0)
+        return min(2**attempt, 30.0)
 
     def _pace(self) -> None:
         if self._last_send is None:
@@ -115,35 +118,52 @@ class TelegramClient:
             self._sleep(waiting)
 
     def send(self, post: JobPost, document: tuple[str, bytes] | None = None) -> None:
-        text = format_telegram(post)
+        channel_tag = self._chat_id if self._chat_id.startswith("@") else ""
+        text = format_telegram(post, channel_tag=channel_tag)
+        keyboard = make_inline_keyboard(post)
         if document is None:
-            self._call("sendMessage", self._text_payload(text))
+            self._call("sendMessage", self._text_payload(text, reply_markup=keyboard))
             return
 
         filename, content = document
         if fits_caption(text):
             self._call(
                 "sendDocument",
-                {"chat_id": self._chat_id, "caption": text, "parse_mode": "HTML"},
+                {
+                    "chat_id": self._chat_id,
+                    "caption": text,
+                    "parse_mode": "HTML",
+                    "reply_markup": json.dumps(keyboard),
+                },
                 files={"document": (filename, content)},
             )
             return
 
         # Too long for a caption, so the details go first and the file follows.
-        self._call("sendMessage", self._text_payload(text))
-        self._call(
-            "sendDocument",
-            {"chat_id": self._chat_id, "caption": post.position[:200]},
-            files={"document": (filename, content)},
-        )
+        self._call("sendMessage", self._text_payload(text, reply_markup=keyboard))
+        try:
+            self._call(
+                "sendDocument",
+                {"chat_id": self._chat_id, "caption": f"📄 {post.position[:190]}"},
+                files={"document": (filename, content)},
+            )
+        except TelegramError as error:
+            # The message itself was already delivered to the channel. Releasing
+            # the claim would cause the text message to be reposted every run.
+            raise TelegramUncertain(
+                f"Announcement was posted but document attachment failed: {error}"
+            ) from error
 
-    def _text_payload(self, text: str) -> dict:
-        return {
+    def _text_payload(self, text: str, reply_markup: dict | None = None) -> dict:
+        payload: dict[str, object] = {
             "chat_id": self._chat_id,
             "text": text,
             "parse_mode": "HTML",
             "link_preview_options": {"is_disabled": True},
         }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        return payload
 
     def _call(self, method: str, payload: dict, files: dict | None = None) -> None:
         url = f"{self._base_url}/{method}"

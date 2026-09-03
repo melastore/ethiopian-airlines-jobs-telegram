@@ -5,7 +5,7 @@ import json
 import logging
 import sqlite3
 from collections.abc import Iterable, Iterator
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -59,8 +59,10 @@ class RunLock(AbstractContextManager["RunLock"]):
         return self
 
     def close(self) -> None:
-        fcntl.flock(self._file, fcntl.LOCK_UN)
-        self._file.close()
+        if not self._file.closed:
+            with suppress(OSError):
+                fcntl.flock(self._file, fcntl.LOCK_UN)
+            self._file.close()
 
     def __exit__(
         self,
@@ -222,7 +224,12 @@ class SentStore(AbstractContextManager["SentStore"]):
         self._connection.commit()
         return self._connection.total_changes - before
 
+    def count(self) -> int:
+        return self._connection.execute("SELECT count(*) FROM sent_posts").fetchone()[0]
+
     def close(self) -> None:
+        with suppress(sqlite3.DatabaseError):
+            self._connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         self._connection.close()
 
     def __exit__(

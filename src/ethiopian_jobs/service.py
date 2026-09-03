@@ -42,11 +42,29 @@ class RunSummary:
 def scrape(source: SourceClient) -> list[JobPost]:
     # The two pages are independent, so fetch them together.
     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="scrape") as pool:
-        vacancies_html = pool.submit(source.get, VACANCIES_URL)
-        results_html = pool.submit(source.get, RESULTS_URL)
-        vacancies = parse_local_vacancies(vacancies_html.result())
-        results = parse_results(results_html.result())
-    return [*vacancies, *results]
+        vacancies_future = pool.submit(source.get, VACANCIES_URL)
+        results_future = pool.submit(source.get, RESULTS_URL)
+
+        posts: list[JobPost] = []
+        errors: list[Exception] = []
+
+        try:
+            posts.extend(parse_local_vacancies(vacancies_future.result()))
+        except Exception as error:
+            logger.error("Could not scrape local vacancies: %s", error)
+            errors.append(error)
+
+        try:
+            posts.extend(parse_results(results_future.result()))
+        except Exception as error:
+            logger.error("Could not scrape recruitment results: %s", error)
+            errors.append(error)
+
+        # One page down is worth reporting, both down means the site or the network.
+        if len(errors) == 2:
+            raise errors[0]
+
+    return posts
 
 
 def name_list(post: JobPost, source: SourceClient | None) -> tuple[str, bytes] | None:

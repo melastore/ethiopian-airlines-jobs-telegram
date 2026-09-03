@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import re
 import unicodedata
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -20,16 +19,14 @@ def normalize(value: str) -> str:
     return " ".join(unicodedata.normalize("NFKC", value).replace("\xa0", " ").split())
 
 
-_NOISE = re.compile(r"[^0-9a-z\u0080-\uffff]+")
-
-
 def squash(value: str) -> str:
     """Comparison form: letters and digits only.
 
     The careers site edits spacing, commas and capitalisation without changing
     the meaning, so those must never make an already sent post look new.
     """
-    return _NOISE.sub("", unicodedata.normalize("NFKC", value).casefold())
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return "".join(c for c in normalized if c.isalnum())
 
 
 def _digest(*parts: str) -> str:

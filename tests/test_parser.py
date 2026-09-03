@@ -5,6 +5,7 @@ import pytest
 from ethiopian_jobs.models import PostKind
 from ethiopian_jobs.parser import (
     ParseError,
+    _shorten,
     attachment_filename,
     parse_local_vacancies,
     parse_results,
@@ -39,7 +40,6 @@ def test_missing_local_section_fails_loudly() -> None:
 def test_empty_results_fail_loudly() -> None:
     with pytest.raises(ParseError, match="no recognizable result"):
         parse_results("<html></html>")
-
 
 
 def test_result_card_exposes_its_pdf_name_list(fixture_dir: Path) -> None:
@@ -112,3 +112,35 @@ def test_a_card_without_a_panel_falls_back_to_the_page_url(fixture_dir: Path) ->
 def test_attachment_filename_drops_the_query_string() -> None:
     url = "https://example.com/docs/list-of-names.pdf?sfvrsn=bddc173a_2"
     assert attachment_filename(url) == "list-of-names.pdf"
+
+
+def test_shorten_without_spaces_does_not_slice_negative_index() -> None:
+    text = "A" * 100
+    shortened = _shorten(text, limit=20)
+    assert len(shortened) == 23
+    assert shortened == "A" * 20 + "..."
+
+
+def test_candidate_list_with_space_label_is_parsed() -> None:
+    html = """
+    <div class="panel panel-default" id="panel_1">
+      <div class="card-header">
+        <a href="#collapse_1">
+          <strong>Postion : </strong> Accountant<br/>
+          <strong>Location : </strong> Head Office<br/>
+          <strong>Announcement : </strong> Exam<br/>
+        </a>
+      </div>
+      <div class="collapse"><div class="panel-body">
+        <div class="Mylead"><strong>Candidate List : </strong>
+          <table><tbody>
+            <tr><td>SER NO.</td><td>FULL NAME</td></tr>
+            <tr><td>1</td><td>Abebe K.</td></tr>
+          </tbody></table>
+        </div>
+      </div></div>
+    </div>
+    """
+    post = parse_results(html)[0]
+    assert len(post.candidate_rows) == 2
+    assert post.candidate_rows[1] == ("1", "Abebe K.")

@@ -94,7 +94,7 @@ class Settings:
             database_path=Path(os.getenv("DATABASE_PATH", "data/jobs.db")).expanduser(),
             request_timeout=_positive_float("REQUEST_TIMEOUT_SECONDS", "30"),
             send_gap=_positive_float("SEND_GAP_SECONDS", str(DEFAULT_SEND_GAP)),
-            max_posts_per_run=_whole_number("MAX_POSTS_PER_RUN", "12"),
+            max_posts_per_run=_whole_number("MAX_POSTS_PER_RUN", "25"),
             schedule=schedule,
             log_level=log_level,
         )
